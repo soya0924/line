@@ -1,8 +1,11 @@
 let port;
 let reader;
-let dnaControl = {
-    radius: 100,    // DNA 螺旋的半徑
-    speed: 0.05     // 旋轉速度
+let waveControl = {
+    amplitude: 100,    // 波浪振幅
+    speed: 0.05,      // 波動速度
+    targetAmplitude: 100,  // 目標振幅值
+    targetSpeed: 0.05,    // 目標速度值
+    smoothingFactor: 0.15  // 平滑因子
 };
 
 async function connectToArduino() {
@@ -33,15 +36,16 @@ async function readArduinoData() {
                 break;
             }
             // 解析 Arduino 發送的數據
-            // 格式: "R:半徑,S:旋轉速度"
             const data = value.trim();
             const pairs = data.split(',');
             pairs.forEach(pair => {
                 const [key, val] = pair.split(':');
                 if (key === 'R') {
-                    dnaControl.radius = parseFloat(val);
+                    // 設置目標值而不是直接改變
+                    waveControl.targetAmplitude = parseFloat(val);
                 } else if (key === 'S') {
-                    dnaControl.speed = parseFloat(val) * 0.01;
+                    // 設置目標值而不是直接改變
+                    waveControl.targetSpeed = parseFloat(val) * 0.01;
                 }
             });
         } catch (error) {
@@ -52,26 +56,26 @@ async function readArduinoData() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DNA 動畫已載入！');
+    console.log('波浪動畫已載入！');
     
     document.getElementById('connectButton').addEventListener('click', connectToArduino);
     
-    let canvas = document.getElementById('dnaCanvas');
+    let canvas = document.getElementById('waveCanvas');
     if (!canvas) {
         canvas = document.createElement('canvas');
-        canvas.id = 'dnaCanvas';
+        canvas.id = 'waveCanvas';
         document.body.appendChild(canvas);
     }
 
     const ctx = canvas.getContext('2d');
     let time = 0;
     
-    // DNA 結構參數
-    const dnaParams = {
-        segments: 100,          // 螺旋段數
-        verticalSpacing: 8,     // 垂直間距
-        connectionWidth: 20,    // 連接線寬度
-        baseSpacing: 25        // 鹼基對間距
+    // 波浪參數
+    const waveParams = {
+        points: 200,          // 每條波浪線的點數
+        layers: 30,          // 螺旋的層數
+        verticalSpacing: 3,  // 增加層與層之間的垂直間距
+        frequency: 0.03      // 增加波浪頻率
     };
 
     function resizeCanvas() {
@@ -79,76 +83,64 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas.height = window.innerHeight;
     }
 
-    function projectPoint(x, y, z) {
-        // 簡單的 3D 投影
-        const perspective = 500;
-        const scale = perspective / (perspective + z);
-        return {
-            x: canvas.width / 2 + x * scale,
-            y: canvas.height / 2 + y * scale
-        };
-    }
+    function drawWaveSpiral(centerX, centerY) {
+        // 螺旋的總高度
+        const totalHeight = waveParams.layers * waveParams.verticalSpacing;
+        const startY = centerY - totalHeight / 2;
 
-    function drawConnection(point1, point2, color, width) {
-        ctx.beginPath();
-        ctx.moveTo(point1.x, point1.y);
-        ctx.lineTo(point2.x, point2.y);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width;
-        ctx.stroke();
-    }
-
-    function drawDNA() {
-        time += dnaControl.speed;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // 繪製兩條螺旋骨架
-        for (let i = 0; i < dnaParams.segments; i++) {
-            const t = i / dnaParams.segments;
-            const angle = time + t * Math.PI * 4;
+        // 為每一層繪製波浪
+        for (let layer = 0; layer < waveParams.layers; layer++) {
+            ctx.beginPath();
             
-            // 第一條螺旋
-            const x1 = Math.cos(angle) * dnaControl.radius;
-            const y1 = i * dnaParams.verticalSpacing - dnaParams.segments * dnaParams.verticalSpacing / 2;
-            const z1 = Math.sin(angle) * dnaControl.radius;
+            // 計算這一層的顏色（從上到下由黑變白）
+            const brightness = Math.round((layer / waveParams.layers) * 100);
+            const alpha = 1 - (layer / waveParams.layers) * 0.5;
+            ctx.strokeStyle = `rgba(${brightness}, ${brightness}, ${brightness}, ${alpha})`;
+            ctx.lineWidth = 1;
             
-            // 第二條螺旋（相位差 π）
-            const x2 = Math.cos(angle + Math.PI) * dnaControl.radius;
-            const z2 = Math.sin(angle + Math.PI) * dnaControl.radius;
+            // 波浪的垂直位置，加入螺旋效果
+            const angle = (layer / waveParams.layers) * Math.PI * 2 + time * waveControl.speed;
+            const spiralRadius = 20 * (1 - layer / waveParams.layers); // 螺旋半徑隨層數變化
+            const baseY = startY + layer * waveParams.verticalSpacing;
             
-            const point1 = projectPoint(x1, y1, z1);
-            const point2 = projectPoint(x2, y1, z2);
-
-            // 繪製螺旋骨架
-            if (i > 0) {
-                const prevAngle = time + (i - 1) / dnaParams.segments * Math.PI * 4;
-                const prevX1 = Math.cos(prevAngle) * dnaControl.radius;
-                const prevY1 = (i - 1) * dnaParams.verticalSpacing - dnaParams.segments * dnaParams.verticalSpacing / 2;
-                const prevZ1 = Math.sin(prevAngle) * dnaControl.radius;
+            // 繪製波浪
+            for (let i = 0; i < waveParams.points; i++) {
+                const x = (i / waveParams.points) * canvas.width;
                 
-                const prevX2 = Math.cos(prevAngle + Math.PI) * dnaControl.radius;
-                const prevZ2 = Math.sin(prevAngle + Math.PI) * dnaControl.radius;
+                // 計算 y 值（組合多個正弦波和螺旋效果）
+                const waveY = 
+                    Math.sin(x * waveParams.frequency + time * waveControl.speed * 2) * waveControl.amplitude * 0.5 +
+                    Math.sin(x * waveParams.frequency * 2 + time * waveControl.speed * 3) * waveControl.amplitude * 0.25;
                 
-                const prevPoint1 = projectPoint(prevX1, prevY1, prevZ1);
-                const prevPoint2 = projectPoint(prevX2, prevY1, prevZ2);
-
-                // 繪製螺旋骨架
-                drawConnection(prevPoint1, point1, '#4a90e2', 3);
-                drawConnection(prevPoint2, point2, '#e24a4a', 3);
+                const spiralY = baseY + Math.sin(angle + x * 0.01) * spiralRadius;
+                const y = spiralY + waveY;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
             }
-
-            // 每隔一定距離繪製鹼基對連接
-            if (i % 4 === 0) {
-                const depth = Math.sin(angle) * 0.5 + 0.5; // 用於控制連接線的透明度
-                const connectionColor = `rgba(200, 200, 200, ${depth})`;
-                drawConnection(point1, point2, connectionColor, 2);
-            }
+            
+            ctx.stroke();
         }
+    }
 
-        requestAnimationFrame(drawDNA);
+    function updateControlValues() {
+        // 平滑過渡到目標值
+        waveControl.amplitude += (waveControl.targetAmplitude - waveControl.amplitude) * waveControl.smoothingFactor;
+        waveControl.speed += (waveControl.targetSpeed - waveControl.speed) * waveControl.smoothingFactor;
+    }
+
+    function animate() {
+        updateControlValues(); // 更新控制值
+        time += 0.04; // 增加時間步進值，使動畫更快
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawWaveSpiral(canvas.width / 2, canvas.height / 2);
+        requestAnimationFrame(animate);
     }
 
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
-    requestAnimationFrame(drawDNA);
+    requestAnimationFrame(animate);
 });
