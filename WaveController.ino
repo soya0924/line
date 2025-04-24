@@ -1,5 +1,5 @@
 // 定義腳位
-const int AMPLITUDE_PIN = A0;    // 控制波浪振幅的可調式電阻
+const int AMPLITUDE_PIN = A0;    // 控制螺旋振幅的可調式電阻
 const int TRIG_PIN = 9;         // 超音波感測器 Trig 腳位
 const int ECHO_PIN = 10;        // 超音波感測器 Echo 腳位
 
@@ -27,38 +27,18 @@ void loop() {
   // 確保距離在有效範圍內（2-200公分）
   distance = constrain(distance, 2, 200);
   
-  // 將振幅值映射到適當範圍（0-200）
-  int baseAmplitude = map(amplitudeValue, 0, 1023, 0, 200);
+  // 將振幅值映射到適當範圍（30-150）- DNA 螺旋的半徑
+  int radius = map(amplitudeValue, 0, 1023, 30, 150);
   
-  // 將距離映射到速度範圍（1-50）
-  // 距離越近，速度越快
-  int baseSpeed = map(distance, 2, 200, 50, 1);
+  // 將距離映射到旋轉速度範圍（1-20）
+  int rotationSpeed = map(distance, 2, 200, 20, 1);
   
-  // 為每條線計算不同的振幅和速度
-  // 格式：A1:振幅1,S1:速度1,A2:振幅2,S2:速度2,...
-  for(int i = 1; i <= 6; i++) {
-    // 每條線的振幅略有不同（±20%）
-    int amplitudeOffset = map(i, 1, 6, -20, 20);
-    int lineAmplitude = baseAmplitude + (baseAmplitude * amplitudeOffset / 100);
-    lineAmplitude = constrain(lineAmplitude, 0, 200);
-    
-    // 每條線的速度也略有不同（±30%）
-    int speedOffset = map(i, 1, 6, -30, 30);
-    int lineSpeed = baseSpeed + (baseSpeed * speedOffset / 100);
-    lineSpeed = constrain(lineSpeed, 1, 50);
-    
-    // 發送數據
-    Serial.print("A");
-    Serial.print(i);
-    Serial.print(":");
-    Serial.print(lineAmplitude);
-    Serial.print(",S");
-    Serial.print(i);
-    Serial.print(":");
-    Serial.print(lineSpeed);
-    if(i < 6) Serial.print(",");
-  }
-  Serial.println();
+  // 發送數據
+  // 格式：R:半徑,S:旋轉速度
+  Serial.print("R:");
+  Serial.print(radius);
+  Serial.print(",S:");
+  Serial.println(rotationSpeed);
   
   // 延遲一小段時間以避免數據發送過快
   delay(50);

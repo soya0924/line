@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>六條 Arduino 控制波浪線</title>
+    <title>DNA 螺旋動畫</title>
     <style>
         html, body {
             margin: 0;
@@ -11,9 +11,9 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #ffffff;
+            background: #000000;  /* 將背景改為純黑色 */
         }
-        #waveCanvas {
+        #dnaCanvas {
             display: block;
             position: absolute;
             top: 0;
@@ -26,14 +26,34 @@
             top: 20px;
             left: 20px;
             z-index: 100;
-            background: rgba(255, 255, 255, 0.8);
-            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        #connectButton {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
             border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: background 0.3s;
+            font-family: Arial, sans-serif;
+        }
+        #connectButton:hover {
+            background: #357abd;
+        }
+        #connectButton:disabled {
+            background: #666;
+            cursor: not-allowed;
         }
         #status {
             margin-top: 10px;
             font-size: 14px;
+            color: #fff;
+            font-family: Arial, sans-serif;
         }
     </style>
 </head>
